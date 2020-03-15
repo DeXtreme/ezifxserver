@@ -24,11 +24,13 @@ double previous_tenkan_H4=0;
 double previous_tenkan_H1=0;
 double previous_tenkan_M30=0;
 double previous_tenkan_M15=0;
+string min_lot;
 //+------------------------------------------------------------------+
 //| Expert initialization function                                   |
 //+------------------------------------------------------------------+
 int OnInit()
   {
+   min_lot=DoubleToString(SymbolInfoDouble(Symbol(),SYMBOL_VOLUME_MIN));
    for(int i=0;i<5;i++)
         {
          int FastPeriod=0;
@@ -263,7 +265,7 @@ void SendSignal(string action,ENUM_TIMEFRAMES IndicatorPeriod,int SlowPeriod){
      }
    string body;
    StringConcatenate(body,"{","\"pair\":\"",Symbol(),"\",\"action\":\"",action,"\",\"timeframe\":\"",getTimeframe(IndicatorPeriod),"\",\"atr\":",DoubleToString(atr),",",
-   "\"bars\":[");
+   "\"min_lot\":",min_lot,",","\"bars\":[");
    double CloseArray[];
    ArraySetAsSeries(CloseArray,true);
    CopyClose(Symbol(),IndicatorPeriod,0,15,CloseArray);
@@ -274,6 +276,7 @@ void SendSignal(string action,ENUM_TIMEFRAMES IndicatorPeriod,int SlowPeriod){
      }
    StringAdd(body,DoubleToString(CloseArray[0]));
    StringAdd(body,"]}");
+   Print(body);
    
    string headers;
    StringConcatenate(headers,"Content-Type:application/json\r\nAUTHORIZATION: Token ",token);
