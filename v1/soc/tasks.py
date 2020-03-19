@@ -265,10 +265,11 @@ def openTradeWorker(self):
 
             else:
                 raise Exception("Could not place trade")
-        openTradeWorker.delay()
     except Exception as exc:
         print(exc)
         raise self.retry(countdown=5, exc=exc)
+    finally:
+         openTradeWorker.delay() 
 
 def round_half_up(n, decimals=0):
     multiplier = 10 ** decimals
@@ -421,11 +422,11 @@ def closeTradeWorker(self):
                 account=Account.objects.get(user=pending_trade.user)
                 account.balance=round_half_down(account.balance+profit+pending_trade.risk,decimals=2)
                 account.save()
-
-        closeTradeWorker.delay()
     except Exception as exc:
         print(exc)
         raise self.retry(countdown=5, exc=exc)
+    finally:
+        closeTradeWorker.delay()
         
 
 
