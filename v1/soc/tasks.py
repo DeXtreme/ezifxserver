@@ -123,149 +123,149 @@ def round_half_down(n, decimals=0):
 @shared_task(bind=True)
 def openTradeWorker(self):
     try:    
-        while True:
-            print("Opening trades")
-            for pending_trade in Trade.objects.filter(status="PO")|Trade.objects.filter(status="AO"):
+        #while True:
+        print("Opening trades")
+        for pending_trade in Trade.objects.filter(status="PO")|Trade.objects.filter(status="AO"):
 
-                pid=pending_trade.id
-                signal=pending_trade.signal              
-                user=pending_trade.user
+            pid=pending_trade.id
+            signal=pending_trade.signal              
+            user=pending_trade.user
 
-                base=signal.pair[0:3]
-                quote=signal.pair[3:]
-                
-                if(pending_trade.status=="PO"):
-                    risk=pending_trade.risk  
-                    atr=settings.ATR_MUL*signal.atr
-                    risk=(1.0-settings.FEE)*risk #take percent of risk amount as fee
+            base=signal.pair[0:3]
+            quote=signal.pair[3:]
+            
+            if(pending_trade.status=="PO"):
+                risk=pending_trade.risk  
+                atr=settings.ATR_MUL*signal.atr
+                risk=(1.0-settings.FEE)*risk #take percent of risk amount as fee
 
-                    usable_margin=con.get_accounts().iloc[0]["usableMargin"]
-                    print("Margin",usable_margin)
-                    leverage=400 #get leverage
-                    #leverage2=con.get_model(models=["LeverageProfile"])
-                    #print("Leverage",leverage2)
-                    usable_margin-=(Account.objects.all().aggregate(balance__sum=Sum('balance'))["balance__sum"] or 0.0)+(Trade.objects.all().aggregate(risk__sum=Sum('risk'))["risk__sum"] or 0.0)  #subtract sum of balances and trade risks
-                    usable_margin/=Account.objects.all().count()
-                    print("Margin",usable_margin)
+                usable_margin=con.get_accounts().iloc[0]["usableMargin"]
+                print("Margin",usable_margin)
+                leverage=400 #get leverage
+                #leverage2=con.get_model(models=["LeverageProfile"])
+                #print("Leverage",leverage2)
+                usable_margin-=(Account.objects.all().aggregate(balance__sum=Sum('balance'))["balance__sum"] or 0.0)+(Trade.objects.all().aggregate(risk__sum=Sum('risk'))["risk__sum"] or 0.0)  #subtract sum of balances and trade risks
+                usable_margin/=Account.objects.all().count()
+                print("Margin",usable_margin)
 
-                    if(quote!="USD"):
-                        exchange=con.get_candles("USD"+"/"+quote,period=signal.timeframe,number=1).iloc[0]["askclose"]
-                        #exchange=get_candles("USD"+"/"+quote,"H1")["ask"]
+                if(quote!="USD"):
+                    exchange=con.get_candles("USD"+"/"+quote,period=signal.timeframe,number=1).iloc[0]["askclose"]
+                    #exchange=get_candles("USD"+"/"+quote,"H1")["ask"]
 
-                        #candle=get_candles(base+"/"+quote,"H1") #extra work for non_majors
-                        candle=con.get_candles(base+"/"+quote,period=signal.timeframe,number=1).iloc[0]
-                        ask=candle["askclose"]
-                        bid=candle["bidclose"]
-                        if(quote=="JPY"):
-                            spread=abs(ask-bid)*100
-                        else:
-                            spread=abs(ask-bid)*10000
-                        print("spread",spread)
-
-                        print("exchange",exchange)
-                        lot=risk/((10/exchange) * atr)
-                        lot= round_half_down(round_half_down(lot/signal.min_lot,decimals=5)*signal.min_lot,decimals=2)
-                        print("lot",lot)
-
-                        atr=risk/((10/exchange)*lot)-spread
-
-                        if((lot*100000*ask/(leverage*exchange))>usable_margin):
-                            raise Exception("Not enough free margin")
-                        
-                        if(lot<signal.min_lot):
-                            raise Exception("Risk too small")
-                    
+                    #candle=get_candles(base+"/"+quote,"H1") #extra work for non_majors
+                    candle=con.get_candles(base+"/"+quote,period=signal.timeframe,number=1).iloc[0]
+                    ask=candle["askclose"]
+                    bid=candle["bidclose"]
+                    if(quote=="JPY"):
+                        spread=abs(ask-bid)*100
                     else:
-                        candle=con.get_candles(base+"/"+quote,period=signal.timeframe,number=1).iloc[0]
-                        ask=candle["askclose"]
-                        bid=candle["bidclose"]
                         spread=abs(ask-bid)*10000
-                        print("spread",spread)
+                    print("spread",spread)
 
-                        lot=risk/(10 * atr)
-                        lot= round_half_up(round_half_up(lot/signal.min_lot,decimals=5)*signal.min_lot,decimals=2)
-                        print("lot",lot)
-                        
-                        atr=risk/((10*lot))-spread
+                    print("exchange",exchange)
+                    lot=risk/((10/exchange) * atr)
+                    lot= round_half_down(round_half_down(lot/signal.min_lot,decimals=5)*signal.min_lot,decimals=2)
+                    print("lot",lot)
 
-                        if((lot*100000*ask/leverage)>usable_margin):
-                            raise Exception("Not enough free margin")
+                    atr=risk/((10/exchange)*lot)-spread
 
-                        if(lot<signal.min_lot):
-                            raise Exception("Risk too small")
-
-                            
-                    #trade=open_trade(base+"/"+quote,(signal.action=="BY"),lot,atr)
-                    trade=con.open_trade(base+"/"+quote,(signal.action=="BY"),lot*100,"GTC","AtMarket",is_in_pips=True,stop=(-1*atr if signal.action=="BY" else atr),trailing_step=1)
-                    print(trade)
-
-
-                    pending_trade.status="AO"
-                    pending_trade.trade_id=trade.get_tradeId()
-                    pending_trade.save()
-
-                else:
-                    if(quote!="USD"):
-                        exchange=con.get_candles("USD"+"/"+quote,period=signal.timeframe,number=1).iloc[0]["askclose"]
-                    trade=con.open_pos[pending_trade.trade_id]
-                if(trade is not None):
-                    trade_id=trade.get_tradeId()
-                    trade=con.open_pos[trade_id]
-                    lot_size=trade.get_amount()/100
-                    stoploss=abs(trade.get_open()-trade.get_stop())
-                    stoploss_price=trade.get_stop()
-                    current_price=trade.get_close()
-
-                    if(quote!="USD"):
-                        risk=(trade.get_amount()*1000)*abs(trade.get_open()-trade.get_stop())/exchange
-                        if(signal.action=="BY"):
-                            profit=(trade.get_amount()*1000)*(trade.get_close()-trade.get_open())/exchange
-                            stoploss_profit=(trade.get_amount()*1000)*(trade.get_stop()-trade.get_open())/exchange
-                        else:
-                            profit=(trade.get_amount()*1000)*(trade.get_open()-trade.get_close())/exchange
-                            stoploss_profit=(trade.get_amount()*1000)*(trade.get_open()-trade.get_stop())/exchange
-                    else:
-                        risk=(trade.get_amount()*1000)*abs(trade.get_open()-trade.get_stop())
-                        if(signal.action=="BY"):
-                            profit=(trade.get_amount()*1000)*(trade.get_close()-trade.get_open())
-                            stoploss_profit=(trade.get_amount()*1000)*(trade.get_stop()-trade.get_open())
-                        else:
-                            profit=(trade.get_amount()*1000)*(trade.get_open()-trade.get_close())
-                            stoploss_profit=(trade.get_amount()*1000)*(trade.get_open()-trade.get_stop())
-
-
-                    pending_trade.risk=round_half_down(risk,decimals=2)
-                    pending_trade.trade_id=trade_id
-                    pending_trade.stoploss=stoploss
-                    pending_trade.stoploss_price=stoploss_price
-                    pending_trade.current_price=current_price
-                    pending_trade.previous_price=current_price
-                    pending_trade.profit=round_half_down(profit,decimals=2)
-                    pending_trade.lot_size=lot_size
-                    pending_trade.stoploss_profit=round_half_down(stoploss_profit,decimals=2)
-                    pending_trade.status="O"
-                    pending_trade.save()
-
-                    account=Account.objects.get(user=user)
-                    account.balance=account.balance-max(round_half_down(risk*1.01,decimals=2),0.01)
-                    account.save()
-
+                    if((lot*100000*ask/(leverage*exchange))>usable_margin):
+                        raise Exception("Not enough free margin")
                     
-
-                    """return {
-                        "risk":round_half_down(risk,decimals=2),
-                        "trade_id":trade_id,
-                        "stoploss":stoploss,
-                        "stoploss_price":stoploss_price,
-                        "current_price":current_price,
-                        "previous_price":current_price,
-                        "profit":round_half_down(profit,decimals=2),
-                        "lot_size":lot_size,
-                        "stoploss_profit":round_half_down(stoploss_profit,decimals=2)} """
-
+                    if(lot<signal.min_lot):
+                        raise Exception("Risk too small")
+                
                 else:
-                    raise Exception("Could not place trade")
-            sleep(2)
+                    candle=con.get_candles(base+"/"+quote,period=signal.timeframe,number=1).iloc[0]
+                    ask=candle["askclose"]
+                    bid=candle["bidclose"]
+                    spread=abs(ask-bid)*10000
+                    print("spread",spread)
+
+                    lot=risk/(10 * atr)
+                    lot= round_half_up(round_half_up(lot/signal.min_lot,decimals=5)*signal.min_lot,decimals=2)
+                    print("lot",lot)
+                    
+                    atr=risk/((10*lot))-spread
+
+                    if((lot*100000*ask/leverage)>usable_margin):
+                        raise Exception("Not enough free margin")
+
+                    if(lot<signal.min_lot):
+                        raise Exception("Risk too small")
+
+                        
+                #trade=open_trade(base+"/"+quote,(signal.action=="BY"),lot,atr)
+                trade=con.open_trade(base+"/"+quote,(signal.action=="BY"),lot*100,"GTC","AtMarket",is_in_pips=True,stop=(-1*atr if signal.action=="BY" else atr),trailing_step=1)
+                print(trade)
+
+
+                pending_trade.status="AO"
+                pending_trade.trade_id=trade.get_tradeId()
+                pending_trade.save()
+
+            else:
+                if(quote!="USD"):
+                    exchange=con.get_candles("USD"+"/"+quote,period=signal.timeframe,number=1).iloc[0]["askclose"]
+                trade=con.open_pos[pending_trade.trade_id]
+            if(trade is not None):
+                trade_id=trade.get_tradeId()
+                trade=con.open_pos[trade_id]
+                lot_size=trade.get_amount()/100
+                stoploss=abs(trade.get_open()-trade.get_stop())
+                stoploss_price=trade.get_stop()
+                current_price=trade.get_close()
+
+                if(quote!="USD"):
+                    risk=(trade.get_amount()*1000)*abs(trade.get_open()-trade.get_stop())/exchange
+                    if(signal.action=="BY"):
+                        profit=(trade.get_amount()*1000)*(trade.get_close()-trade.get_open())/exchange
+                        stoploss_profit=(trade.get_amount()*1000)*(trade.get_stop()-trade.get_open())/exchange
+                    else:
+                        profit=(trade.get_amount()*1000)*(trade.get_open()-trade.get_close())/exchange
+                        stoploss_profit=(trade.get_amount()*1000)*(trade.get_open()-trade.get_stop())/exchange
+                else:
+                    risk=(trade.get_amount()*1000)*abs(trade.get_open()-trade.get_stop())
+                    if(signal.action=="BY"):
+                        profit=(trade.get_amount()*1000)*(trade.get_close()-trade.get_open())
+                        stoploss_profit=(trade.get_amount()*1000)*(trade.get_stop()-trade.get_open())
+                    else:
+                        profit=(trade.get_amount()*1000)*(trade.get_open()-trade.get_close())
+                        stoploss_profit=(trade.get_amount()*1000)*(trade.get_open()-trade.get_stop())
+
+
+                pending_trade.risk=round_half_down(risk,decimals=2)
+                pending_trade.trade_id=trade_id
+                pending_trade.stoploss=stoploss
+                pending_trade.stoploss_price=stoploss_price
+                pending_trade.current_price=current_price
+                pending_trade.previous_price=current_price
+                pending_trade.profit=round_half_down(profit,decimals=2)
+                pending_trade.lot_size=lot_size
+                pending_trade.stoploss_profit=round_half_down(stoploss_profit,decimals=2)
+                pending_trade.status="O"
+                pending_trade.save()
+
+                account=Account.objects.get(user=user)
+                account.balance=account.balance-max(round_half_down(risk*1.01,decimals=2),0.01)
+                account.save()
+
+                
+
+                """return {
+                    "risk":round_half_down(risk,decimals=2),
+                    "trade_id":trade_id,
+                    "stoploss":stoploss,
+                    "stoploss_price":stoploss_price,
+                    "current_price":current_price,
+                    "previous_price":current_price,
+                    "profit":round_half_down(profit,decimals=2),
+                    "lot_size":lot_size,
+                    "stoploss_profit":round_half_down(stoploss_profit,decimals=2)} """
+
+            else:
+                raise Exception("Could not place trade")
+        openTradeWorker.delay()
     except Exception as exc:
         print(exc)
         raise self.retry(countdown=5, exc=exc)
@@ -289,9 +289,11 @@ def updateTasker():
         if(offset<Trade.objects.filter(status="O").count()):
             updateTask.delay(offset,offset+limit)
             offset+=limit
+            sleep(0.001)
         else:
             offset=0
-        sleep(1)
+            break
+    updateTasker.delay()
         
 
 @shared_task
@@ -374,53 +376,53 @@ def updateTask(start,stop):
 @shared_task(bind=True)
 def closeTradeWorker(self):
     try:    
-        while True:
-            print("Closing trades")
-            for pending_trade in Trade.objects.filter(status="PC")|Trade.objects.filter(status="AC"):
+        #while True:
+        print("Closing trades")
+        for pending_trade in Trade.objects.filter(status="PC")|Trade.objects.filter(status="AC"):
 
-                pid=pending_trade.id
-                signal=pending_trade.signal              
-                user=pending_trade.user
+            pid=pending_trade.id
+            signal=pending_trade.signal              
+            user=pending_trade.user
 
-                base=signal.pair[0:3]
-                quote=signal.pair[3:]
-                
-                if(pending_trade.status=="PC"):      
-                    con.close_trade(pending_trade.trade_id,int(pending_trade.lot_size*100),time_in_force="GTC")
-                    pending_trade.status="AC"
-                    pending_trade.save()
+            base=signal.pair[0:3]
+            quote=signal.pair[3:]
+            
+            if(pending_trade.status=="PC"):      
+                con.close_trade(pending_trade.trade_id,int(pending_trade.lot_size*100),time_in_force="GTC")
+                pending_trade.status="AC"
+                pending_trade.save()
 
-                
-                if(pending_trade.trade_id in con.closed_pos):
-                    trade=con.closed_pos[pending_trade.trade_id]
-                    trade_id=trade.get_tradeId()
-                    current_price=trade.get_close()
+            
+            if(pending_trade.trade_id in con.closed_pos):
+                trade=con.closed_pos[pending_trade.trade_id]
+                trade_id=trade.get_tradeId()
+                current_price=trade.get_close()
 
-                    if(quote!="USD"):
-                        exchange=con.get_candles("USD"+"/"+quote,period=signal.timeframe,number=1).iloc[0]["askclose"]
-                        if(trade.get_isBuy()):
-                            profit=(trade.get_amount()*1000)*(trade.get_close()-trade.get_open())/exchange
-                        else:
-                            profit=(trade.get_amount()*1000)*(trade.get_open()-trade.get_close())/exchange
+                if(quote!="USD"):
+                    exchange=con.get_candles("USD"+"/"+quote,period=signal.timeframe,number=1).iloc[0]["askclose"]
+                    if(trade.get_isBuy()):
+                        profit=(trade.get_amount()*1000)*(trade.get_close()-trade.get_open())/exchange
                     else:
-                        if(trade.get_isBuy()):
-                            profit=(trade.get_amount()*1000)*(trade.get_close()-trade.get_open())
-                        else:
-                            profit=(trade.get_amount()*1000)*(trade.get_open()-trade.get_close())
+                        profit=(trade.get_amount()*1000)*(trade.get_open()-trade.get_close())/exchange
+                else:
+                    if(trade.get_isBuy()):
+                        profit=(trade.get_amount()*1000)*(trade.get_close()-trade.get_open())
+                    else:
+                        profit=(trade.get_amount()*1000)*(trade.get_open()-trade.get_close())
 
 
-                    
-                    pending_trade.current_price=current_price
-                    pending_trade.previous_price=current_price
-                    pending_trade.profit=round_half_down(profit,decimals=2)
-                    pending_trade.status="C"
-                    pending_trade.save()
+                
+                pending_trade.current_price=current_price
+                pending_trade.previous_price=current_price
+                pending_trade.profit=round_half_down(profit,decimals=2)
+                pending_trade.status="C"
+                pending_trade.save()
 
-                    account=Account.objects.get(user=pending_trade.user)
-                    account.balance=round_half_down(account.balance+profit+pending_trade.risk,decimals=2)
-                    account.save()
+                account=Account.objects.get(user=pending_trade.user)
+                account.balance=round_half_down(account.balance+profit+pending_trade.risk,decimals=2)
+                account.save()
 
-            sleep(1)
+        closeTradeWorker.delay()
     except Exception as exc:
         print(exc)
         raise self.retry(countdown=5, exc=exc)
