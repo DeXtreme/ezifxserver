@@ -24,7 +24,8 @@ def getMarketInfo(signal):
 
         if(quote!="USD"):
             exchange=get_candles("USD"+"/"+quote,signal.timeframe)["ask"]
-            rate=get_candles(base+"/"+quote,"H1")
+            rate=get_candles(base+"/"+quote,signal.timeframe)
+
             if(signal=="BY"):
                 rate=rate["ask"] #extra work for non_majors
             else:
