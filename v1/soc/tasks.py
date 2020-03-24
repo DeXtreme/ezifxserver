@@ -434,13 +434,15 @@ def closeTradeWorker(self):
 def start(sender=None, headers=None, body=None, **kwargs):
     global con
     con=efxfxcmpy(access_token=api_token,log_level='error')
-    print("FXCM connected")
-    SocInfo.objects.update_or_create(pk=1,defaults={"offers":json.dumps(con.offers),"account_id":str(con.default_account)})
-
-    openTradeWorker.delay()
-    closeTradeWorker.delay()
-    updateTasker.delay()
-
+    if(con.is_connected):
+        print("FXCM connected")
+        SocInfo.objects.update_or_create(pk=1,defaults={"offers":json.dumps(con.offers),"account_id":str(con.default_account)})
+        openTradeWorker.delay()
+        closeTradeWorker.delay()
+        updateTasker.delay()
+    else:
+        print("FXCM connected")
+        
 
 class efxfxcmpy(fxcmpy):
     def __on_connect__(self, msg=''):

@@ -3,7 +3,7 @@ import json
 import requests
 from .models import SocInfo
 
-api_token="549dc799be6be78b1dcdb5e47c751983b5122d16"
+api_token="8d91933f0072753d4123ad4836dc2a37a60e83d5"
 offers=[]
 account_id=None
 
@@ -43,7 +43,7 @@ def get_credentials():
 def get_candles(pair,period):
     global offers
     
-    response=requests.get("https://api-demo.fxcm.com:443/candles/"+str(offers[pair])+period,params={"num":"1"},headers=get_credentials())
+    response=requests.get("https://api-demo.fxcm.com:443/candles/"+str(offers[pair])+"/"+period,params={"num":"1"},headers=get_credentials())
 
     if(response.status_code==200):
         try:
