@@ -196,7 +196,7 @@ def openTradeWorker(self):
 
                         
                 #trade=open_trade(base+"/"+quote,(signal.action=="BY"),lot,atr)
-                trade=con.open_trade(base+"/"+quote,(signal.action=="BY"),lot*100,"GTC","AtMarket",is_in_pips=True,stop=(-1*int(atr) if signal.action=="SL" else int(atr)),trailing_step=1)
+                trade=con.open_trade(base+"/"+quote,(signal.action=="BY"),lot*100,"GTC","AtMarket",is_in_pips=True,stop=(-1*int(atr)),trailing_step=1)
                 print(trade)
 
 
