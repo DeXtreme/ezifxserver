@@ -267,7 +267,7 @@ def openTradeWorker(self):
                 raise Exception("Could not place trade")
     except Exception as exc:
         print(exc)
-        raise self.retry(countdown=5, exc=exc)
+        #raise self.retry(countdown=5, exc=exc)
     finally:
          openTradeWorker.delay() 
 
@@ -424,7 +424,7 @@ def closeTradeWorker(self):
                 account.save()
     except Exception as exc:
         print(exc)
-        raise self.retry(countdown=5, exc=exc)
+        #raise self.retry(countdown=5, exc=exc)
     finally:
         closeTradeWorker.delay()
         
