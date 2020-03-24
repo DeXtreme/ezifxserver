@@ -43,7 +43,7 @@ def get_credentials():
 def get_candles(pair,period):
     global offers
     
-    response=requests.get("https://api-demo.fxcm.com:443/candles/"+str(offers[pair])+"/"+period,params={"num":"1"},headers=get_credentials())
+    response=requests.get("https://api-demo.fxcm.com:443/candles/"+str(offers[pair])+"/"+period.lower(),params={"num":"1"},headers=get_credentials())
 
     if(response.status_code==200):
         try:

@@ -149,11 +149,11 @@ def openTradeWorker(self):
                 print("Margin",usable_margin)
 
                 if(quote!="USD"):
-                    exchange=con.get_candles("USD"+"/"+quote,period=signal.timeframe,number=1).iloc[0]["askclose"]
+                    exchange=con.get_candles("USD"+"/"+quote,period=signal.timeframe.lower(),number=1).iloc[0]["askclose"]
                     #exchange=get_candles("USD"+"/"+quote,"H1")["ask"]
 
                     #candle=get_candles(base+"/"+quote,"H1") #extra work for non_majors
-                    candle=con.get_candles(base+"/"+quote,period=signal.timeframe,number=1).iloc[0]
+                    candle=con.get_candles(base+"/"+quote,period=signal.timeframe.lower(),number=1).iloc[0]
                     ask=candle["askclose"]
                     bid=candle["bidclose"]
                     if(quote=="JPY"):
@@ -176,7 +176,7 @@ def openTradeWorker(self):
                         raise Exception("Risk too small")
                 
                 else:
-                    candle=con.get_candles(base+"/"+quote,period=signal.timeframe,number=1).iloc[0]
+                    candle=con.get_candles(base+"/"+quote,period=signal.timeframe.lower(),number=1).iloc[0]
                     ask=candle["askclose"]
                     bid=candle["bidclose"]
                     spread=abs(ask-bid)*10000
@@ -206,7 +206,7 @@ def openTradeWorker(self):
 
             else:
                 if(quote!="USD"):
-                    exchange=con.get_candles("USD"+"/"+quote,period=signal.timeframe,number=1).iloc[0]["askclose"]
+                    exchange=con.get_candles("USD"+"/"+quote,period=signal.timeframe.lower(),number=1).iloc[0]["askclose"]
                 trade=con.open_pos[pending_trade.trade_id]
             if(trade is not None):
                 trade_id=trade.get_tradeId()
@@ -311,7 +311,7 @@ def updateTask(start,stop):
                 current_price=position.get_close()
 
                 if(quote!="USD"):
-                    exchange=con.get_candles("USD"+"/"+quote,period=signal.timeframe,number=1)["askclose"].iloc[0]
+                    exchange=con.get_candles("USD"+"/"+quote,period=signal.timeframe.lower(),number=1)["askclose"].iloc[0]
                     if(position.get_isBuy()==True):
                         profit=(position.get_amount()*1000)*(position.get_close()-position.get_open())/exchange
                         stoploss_profit=(position.get_amount()*1000)*(position.get_stop()-position.get_open())/exchange
@@ -343,7 +343,7 @@ def updateTask(start,stop):
                 current_price=position.get_close()
 
                 if(quote!="USD"):
-                    exchange=con.get_candles("USD"+"/"+quote,period=signal.timeframe,number=1)["askclose"].iloc[0]
+                    exchange=con.get_candles("USD"+"/"+quote,period=signal.timeframe.lower(),number=1)["askclose"].iloc[0]
                     if(position.get_isBuy()==True):
                         profit=(position.get_amount()*1000)*(position.get_close()-position.get_open())/exchange
                     else:
@@ -400,7 +400,7 @@ def closeTradeWorker(self):
                 current_price=trade.get_close()
 
                 if(quote!="USD"):
-                    exchange=con.get_candles("USD"+"/"+quote,period=signal.timeframe,number=1).iloc[0]["askclose"]
+                    exchange=con.get_candles("USD"+"/"+quote,period=signal.timeframe.lower(),number=1).iloc[0]["askclose"]
                     if(trade.get_isBuy()):
                         profit=(trade.get_amount()*1000)*(trade.get_close()-trade.get_open())/exchange
                     else:
@@ -442,7 +442,7 @@ def start(sender=None, headers=None, body=None, **kwargs):
         updateTasker.delay()
     else:
         print("FXCM connected")
-        
+
 
 class efxfxcmpy(fxcmpy):
     def __on_connect__(self, msg=''):
