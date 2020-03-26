@@ -138,7 +138,7 @@ def openTradeWorker(self):
             if(pending_trade.status=="PO"):
                 risk=pending_trade.risk  
                 atr=settings.ATR_MUL*signal.atr
-                risk=(1.0-settings.FEE)*risk #take percent of risk amount as fee
+                #risk=(1.0-settings.FEE)*risk #take percent of risk amount as fee
 
                 usable_margin=con.get_accounts().iloc[0]["usableMargin"]
                 print("Margin",usable_margin)
@@ -249,7 +249,7 @@ def openTradeWorker(self):
                 pending_trade.save()
 
                 account=Account.objects.get(user=user)
-                account.balance=account.balance-max(round_half_down(risk*1.01,decimals=2),0.01)
+                account.balance-=(risk+max(round_half_down(risk*settings.FEE,decimals=2),0.01))
                 account.save()
 
                 
@@ -451,5 +451,10 @@ class efxfxcmpy(fxcmpy):
     def __on_connect__(self, msg=''):
         super().__on_connect__()
         SocInfo.objects.update_or_create(pk=1,defaults={"socket_id":self.socket.sid})
+
+    def __on_disconnect__(self,msg=''):
+        super().__on_disconnect__(msg=msg)
+        self.__init__(access_token=api_token,log_level='error')
+
 
 
