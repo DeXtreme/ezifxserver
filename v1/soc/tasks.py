@@ -128,7 +128,8 @@ def openTradeWorker(self):
         for pending_trade in Trade.objects.filter(status="PO")|Trade.objects.filter(status="AO"):
 
             pid=pending_trade.id
-            signal=pending_trade.signal              
+            signal=pending_trade.signal   
+            timeframe="%s%s" %("m" if signal.timeframe[0].lower()=="m" else "H",signal.timeframe[1:])           
             user=pending_trade.user
 
             base=signal.pair[0:3]
@@ -149,11 +150,12 @@ def openTradeWorker(self):
                 print("Margin",usable_margin)
 
                 if(quote!="USD"):
-                    exchange=con.get_candles("USD"+"/"+quote,period=signal.timeframe.lower(),number=1).iloc[0]["askclose"]
+                    exchange=con.get_candles("USD"+"/"+quote,period=timeframe,number=1).iloc[0]["askclose"]
+                    per_pip=10 if quote!="JPY" else 1000
                     #exchange=get_candles("USD"+"/"+quote,"H1")["ask"]
 
                     #candle=get_candles(base+"/"+quote,"H1") #extra work for non_majors
-                    candle=con.get_candles(base+"/"+quote,period=signal.timeframe.lower(),number=1).iloc[0]
+                    candle=con.get_candles(base+"/"+quote,period=timeframe,number=1).iloc[0]
                     ask=candle["askclose"]
                     bid=candle["bidclose"]
                     if(quote=="JPY"):
@@ -163,11 +165,11 @@ def openTradeWorker(self):
                     print("spread",spread)
 
                     print("exchange",exchange)
-                    lot=risk/((10/exchange) * atr)
+                    lot=risk/((per_pip/exchange) * atr)
                     lot= round_half_down(round_half_down(lot/signal.min_lot,decimals=5)*signal.min_lot,decimals=2)
                     print("lot",lot)
 
-                    atr=risk/((10/exchange)*lot)-spread
+                    atr=risk/((per_pip/exchange)*lot)-spread
 
                     if((lot*100000*ask/(leverage*exchange))>usable_margin):
                         raise Exception("Not enough free margin")
@@ -176,7 +178,7 @@ def openTradeWorker(self):
                         raise Exception("Risk too small")
                 
                 else:
-                    candle=con.get_candles(base+"/"+quote,period=signal.timeframe.lower(),number=1).iloc[0]
+                    candle=con.get_candles(base+"/"+quote,period=timeframe,number=1).iloc[0]
                     ask=candle["askclose"]
                     bid=candle["bidclose"]
                     spread=abs(ask-bid)*10000
@@ -206,7 +208,7 @@ def openTradeWorker(self):
 
             else:
                 if(quote!="USD"):
-                    exchange=con.get_candles("USD"+"/"+quote,period=signal.timeframe.lower(),number=1).iloc[0]["askclose"]
+                    exchange=con.get_candles("USD"+"/"+quote,period=timeframe,number=1).iloc[0]["askclose"]
                 trade=con.open_pos[pending_trade.trade_id]
             if(trade is not None):
                 trade_id=trade.get_tradeId()
@@ -305,13 +307,14 @@ def updateTask(start,stop):
             if(trade.trade_id in con.open_pos):
                 position=con.open_pos[trade.trade_id]
                 signal=trade.signal
+                timeframe="%s%s" %("m" if signal.timeframe[0].lower=="m" else "H",signal.timeframe[1:])
                 quote=position.get_currency().split("/")[1]     
                 stoploss=abs(position.get_close()-position.get_stop())
                 stoploss_price=position.get_stop()
                 current_price=position.get_close()
 
                 if(quote!="USD"):
-                    exchange=con.get_candles("USD"+"/"+quote,period=signal.timeframe.lower(),number=1)["askclose"].iloc[0]
+                    exchange=con.get_candles("USD"+"/"+quote,period=timeframe,number=1)["askclose"].iloc[0]
                     if(position.get_isBuy()==True):
                         profit=(position.get_amount()*1000)*(position.get_close()-position.get_open())/exchange
                         stoploss_profit=(position.get_amount()*1000)*(position.get_stop()-position.get_open())/exchange
@@ -343,7 +346,7 @@ def updateTask(start,stop):
                 current_price=position.get_close()
 
                 if(quote!="USD"):
-                    exchange=con.get_candles("USD"+"/"+quote,period=signal.timeframe.lower(),number=1)["askclose"].iloc[0]
+                    exchange=con.get_candles("USD"+"/"+quote,period=timeframe,number=1)["askclose"].iloc[0]
                     if(position.get_isBuy()==True):
                         profit=(position.get_amount()*1000)*(position.get_close()-position.get_open())/exchange
                     else:

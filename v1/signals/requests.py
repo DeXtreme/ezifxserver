@@ -25,14 +25,15 @@ def getMarketInfo(signal):
         if(quote!="USD"):
             exchange=get_candles("USD"+"/"+quote,signal.timeframe)["ask"]
             rate=get_candles(base+"/"+quote,signal.timeframe)
-
+            per_pip=10 if quote!="JPY" else 1000
+            
             if(signal=="BY"):
                 rate=rate["ask"] #extra work for non_majors
             else:
                 rate=rate["bid"]
                 
             print("exchange",exchange)
-            min_risk=signal.min_lot*((10/exchange) * atr)
+            min_risk=signal.min_lot*((per_pip/exchange) * atr)
             print("min_risk",min_risk)
 
             if((signal.min_lot*100000*rate/(leverage*exchange))>usable_margin):
@@ -40,7 +41,7 @@ def getMarketInfo(signal):
 
             max_lot=(usable_margin*leverage)/(100000*rate/exchange)
             print("max_lot",max_lot)
-            max_risk=max_lot*((10/exchange) * atr)
+            max_risk=max_lot*((per_pip/exchange) * atr)
             print("max_risk",max_risk)
 
             if(max_lot<signal.min_lot):
