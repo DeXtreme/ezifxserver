@@ -1,6 +1,6 @@
 from .models import Trade
 import math
-from v1.soc.socket import get_candles,get_usableMargin
+from v1.soc.tasks import openTradeWorker,closeTradeWorker
 from time import sleep
 from v1.account.models import Account
 
@@ -10,8 +10,9 @@ def closeTrade(trade):
         trade.status="PC"
         trade.save()
         count=0
-        while True:
+        while count<10:
             pending=Trade.objects.get(id=trade.id)
+            closeTradeWorker.delay(trade.id,priority=0)
             if(pending.status=="C"):
                 return pending
             count+=1
@@ -38,8 +39,9 @@ def openTrade(user,signal,risk):
 
         pending=Trade.objects.create(user=user,signal=signal,risk=risk,status="PO")
         count=0
-        while True:
+        while count<10:
             pending=Trade.objects.get(id=pending.id)
+            openTradeWorker.delay(pending.id,priority=0)
             if(pending.status=="O"):
                 return pending
             count+=1

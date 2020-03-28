@@ -121,11 +121,11 @@ def round_half_down(n, decimals=0):
 """
 
 @shared_task(bind=True)
-def openTradeWorker(self):
+def openTradeWorker(self,pk):
     try:    
         #while True:
         print("Opening trades")
-        for pending_trade in Trade.objects.filter(status="PO")|Trade.objects.filter(status="AO"):
+        for pending_trade in Trade.objects.filter(status="PO",id=pk)|Trade.objects.filter(status="AO",id=pk):
 
             pid=pending_trade.id
             signal=pending_trade.signal   
@@ -249,29 +249,16 @@ def openTradeWorker(self):
                 pending_trade.save()
 
                 account=Account.objects.get(user=user)
-                account.balance-=(risk+max(round_half_down(risk*settings.FEE,decimals=2),0.01))
+                account.balance-=(risk+max(round_half_down(risk*settings.FEE,decimals=2),0.01)
                 account.save()
-
-                
-
-                """return {
-                    "risk":round_half_down(risk,decimals=2),
-                    "trade_id":trade_id,
-                    "stoploss":stoploss,
-                    "stoploss_price":stoploss_price,
-                    "current_price":current_price,
-                    "previous_price":current_price,
-                    "profit":round_half_down(profit,decimals=2),
-                    "lot_size":lot_size,
-                    "stoploss_profit":round_half_down(stoploss_profit,decimals=2)} """
 
             else:
                 raise Exception("Could not place trade")
     except Exception as exc:
         print(exc)
-        #raise self.retry(countdown=5, exc=exc)
-    finally:
-         openTradeWorker.delay() 
+        raise self.retry(max_retries=5, exc=exc,countdown=1)
+    #finally:
+         #openTradeWorker.delay() 
 
 def round_half_up(n, decimals=0):
     multiplier = 10 ** decimals
@@ -290,13 +277,13 @@ def updateTasker():
     while True:
         print("in updater",con.socket.sid)
         if(offset<Trade.objects.filter(status="O").count()):
-            updateTask.delay(offset,offset+limit)
+            updateTask.delay(offset,offset+limit,priority=5)
             offset+=limit
-            sleep(0.001)
+            #sleep(0.001)
         else:
             offset=0
             break
-    updateTasker.delay()
+    updateTasker.delay(priority=0)
         
 
 @shared_task
@@ -378,11 +365,11 @@ def updateTask(start,stop):
         print(e)
 
 @shared_task(bind=True)
-def closeTradeWorker(self):
+def closeTradeWorker(self,pk):
     try:    
         #while True:
         print("Closing trades")
-        for pending_trade in Trade.objects.filter(status="PC")|Trade.objects.filter(status="AC"):
+        for pending_trade in Trade.objects.filter(status="PC",id=pk)|Trade.objects.filter(status="AC",id=pk):
 
             pid=pending_trade.id
             signal=pending_trade.signal              
@@ -427,9 +414,9 @@ def closeTradeWorker(self):
                 account.save()
     except Exception as exc:
         print(exc)
-        #raise self.retry(countdown=5, exc=exc)
-    finally:
-        closeTradeWorker.delay()
+        raise self.retry(max_retries=5, exc=exc,countdown=1)
+    #finally:
+        #closeTradeWorker.delay()
         
 
 
@@ -440,9 +427,9 @@ def start(sender=None, headers=None, body=None, **kwargs):
     if(con.is_connected):
         print("FXCM connected")
         SocInfo.objects.update_or_create(pk=1,defaults={"offers":json.dumps(con.offers),"account_id":str(con.default_account)})
-        openTradeWorker.delay()
-        closeTradeWorker.delay()
-        updateTasker.delay()
+        #openTradeWorker.delay()
+        #closeTradeWorker.delay()
+        updateTasker.delay(priority=0)
     else:
         print("FXCM connected")
 
