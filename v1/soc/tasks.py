@@ -249,7 +249,7 @@ def openTradeWorker(self,pk):
                 pending_trade.save()
 
                 account=Account.objects.get(user=user)
-                account.balance-=(risk+max(round_half_down(risk*settings.FEE,decimals=2),0.01)
+                account.balance-=(risk+max(round_half_down(risk*settings.FEE,decimals=2),0.01))
                 account.save()
 
             else:
@@ -277,13 +277,13 @@ def updateTasker():
     while True:
         print("in updater",con.socket.sid)
         if(offset<Trade.objects.filter(status="O").count()):
-            updateTask.delay(offset,offset+limit,priority=5)
+            updateTask.apply_async(args=[offset,offset+limit],kwargs={"priority":5})
             offset+=limit
             #sleep(0.001)
         else:
             offset=0
             break
-    updateTasker.delay(priority=0)
+    updateTasker.apply_async(args=[],kwargs={"priority":9})
         
 
 @shared_task
@@ -429,7 +429,7 @@ def start(sender=None, headers=None, body=None, **kwargs):
         SocInfo.objects.update_or_create(pk=1,defaults={"offers":json.dumps(con.offers),"account_id":str(con.default_account)})
         #openTradeWorker.delay()
         #closeTradeWorker.delay()
-        updateTasker.delay(priority=0)
+        updateTasker.apply_async(args=[],kwargs={"priority":9})
     else:
         print("FXCM connected")
 

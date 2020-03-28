@@ -12,7 +12,7 @@ def closeTrade(trade):
         count=0
         while count<10:
             pending=Trade.objects.get(id=trade.id)
-            closeTradeWorker.delay(trade.id,priority=0)
+            closeTradeWorker.apply_async(args=[trade.id],kwargs={"priority":0})
             if(pending.status=="C"):
                 return pending
             count+=1
@@ -41,7 +41,7 @@ def openTrade(user,signal,risk):
         count=0
         while count<10:
             pending=Trade.objects.get(id=pending.id)
-            openTradeWorker.delay(pending.id,priority=0)
+            openTradeWorker.apply_async(args=[pending.id],kwargs={"priority":0})
             if(pending.status=="O"):
                 return pending
             count+=1
