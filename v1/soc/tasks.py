@@ -235,8 +235,8 @@ def updateTasker():
                     offset=0
         except Exception as e:
             print(e)
+        sleep(1)
         
-
 @shared_task
 def updateTask(start,stop):
     try:

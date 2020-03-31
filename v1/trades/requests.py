@@ -42,7 +42,7 @@ def openTrade(user,signal,risk):
 
         if(risk<info["min_risk"]):
             raise Exception("Trade could not be opened.Risk amount below minimum")
-        elif(risk>info["min_risk"]):
+        elif(risk>info["max_risk"]):
             raise Exception("Trade could not be opened.Risk amount above maximum")
         else:
             pass
