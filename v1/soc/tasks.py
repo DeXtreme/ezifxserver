@@ -228,7 +228,7 @@ def updateTasker():
             or (time.month==12 and time.date==31 and time.hour>21) or (time.month==1 and time.date==1) or (time.month==1 and time.date==1 and time.hour<23)): #31/12 9pm to 01/01 11pm 
 
                 if(offset<Trade.objects.filter(status="O").count()):
-                    updateTask.apply_async((offset,offset+limit),priority=5)
+                    updateTask.apply_async([offset,offset+limit],priority=5)
                     offset+=limit
                     sleep(0.01)
                 else:
