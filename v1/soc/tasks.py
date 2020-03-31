@@ -223,16 +223,16 @@ def updateTasker():
             print("in updater",con.socket.sid)
             time=datetime.utcnow()
 
-            """if((time.weekday==4 and time.hour>21) or (time.weekday==5) or (time.weekday==6 and time.hour<23) #friday 9pm to sunday 11pm
+            if((time.weekday==4 and time.hour>21) or (time.weekday==5) or (time.weekday==6 and time.hour<23) #friday 9pm to sunday 11pm
             or (time.month==12 and time.date==24 and time.hour>21) or (time.month==12 and time.date==25) or (time.month==12 and time.date==25 and time.hour<23) #24/12 9pm to 25/12 11pm
-            or (time.month==12 and time.date==31 and time.hour>21) or (time.month==1 and time.date==1) or (time.month==1 and time.date==1 and time.hour<23)): #31/12 9pm to 01/01 11pm """
+            or (time.month==12 and time.date==31 and time.hour>21) or (time.month==1 and time.date==1) or (time.month==1 and time.date==1 and time.hour<23)): #31/12 9pm to 01/01 11pm 
 
-            if(offset<Trade.objects.filter(status="O").count()):
-                updateTask.apply_async((offset,offset+limit),priority=5)
-                offset+=limit
-                sleep(0.01)
-            else:
-                offset=0
+                if(offset<Trade.objects.filter(status="O").count()):
+                    updateTask.apply_async((offset,offset+limit),priority=5)
+                    offset+=limit
+                    sleep(0.01)
+                else:
+                    offset=0
         except Exception as e:
             print(e)
         
