@@ -248,7 +248,7 @@ def updateTask(start,stop):
             if(trade.trade_id in con.open_pos):
                 position=con.open_pos[trade.trade_id]
                 signal=trade.signal
-                timeframe="%s%s" %("m" if signal.timeframe[0].lower=="m" else "H",signal.timeframe[1:])
+                timeframe="%s%s" %("m" if signal.timeframe[0].lower()=="m" else "H",signal.timeframe[1:])
                 quote=position.get_currency().split("/")[1]     
                 stoploss=abs(position.get_close()-position.get_stop())
                 stoploss_price=position.get_stop()
