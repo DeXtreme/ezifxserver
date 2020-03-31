@@ -47,14 +47,14 @@ def get_candles(pair,period):
 
     if(response.status_code==200):
         try:
-            print(response.text)
             response=json.loads(response.text)
 
             if("error" in response["response"] and response["response"]["error"]):
-                raise Exception("Server error")
+                raise Exception()
 
             return {"ask":response["candles"][0][6],"bid":response["candles"][0][2]}
         except:
+            print(response.text)
             raise Exception("Server error")
     else:
         raise Exception("Connection error")
@@ -69,10 +69,11 @@ def get_usableMargin():
             response=json.loads(response.text)
 
             if("error" in response["response"]):
-                raise Exception("Server error")
+                raise Exception()
 
             return response["accounts"][0]["usableMargin"]
         except:
+            print(response.text)
             raise Exception("Server error")
     else:
         raise Exception("Connection error")

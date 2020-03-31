@@ -50,10 +50,10 @@ class TradesViewset(GenericViewSet,CreateModelMixin,ListModelMixin,RetrieveModel
 
     def get_queryset(self):
         return Trade.objects.filter(user__username=self.request.user.username,status="C")
-        if self.action=="list":
+        """if self.action=="list":
             return Trade.objects.filter(user__username=self.request.user.username,status="O")
         else:
-            return Trade.objects.filter(user__username=self.request.user.username,status="C")
+            return Trade.objects.filter(user__username=self.request.user.username,status="C")"""
 
     
     def create(self,request):
