@@ -14,10 +14,10 @@ int OnInit()
    //Open charts and attach EAs
    long chartid=ChartOpen("EURUSD",PERIOD_H1);
    ChartApplyTemplate(chartid,"eurusd.tpl");
-   chartid=ChartOpen("USDJPY",PERIOD_H4);
-   ChartApplyTemplate(chartid,"usdjpy.tpl");
-   chartid=ChartOpen("GBPUSD",PERIOD_H12);
-   ChartApplyTemplate(chartid,"gbpusd.tpl");
+   //chartid=ChartOpen("USDJPY",PERIOD_H4);
+   //ChartApplyTemplate(chartid,"usdjpy.tpl");
+   //chartid=ChartOpen("GBPUSD",PERIOD_H12);
+   //ChartApplyTemplate(chartid,"gbpusd.tpl");
       
    return(INIT_SUCCEEDED);
   }
