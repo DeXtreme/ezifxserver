@@ -8,8 +8,6 @@
 #property version   "1.00"
 //--- input parameters
 input string   token="8d15f5ee4db8cab6a9628423b88f31bca9f5817b";
-input int      D1Fast=1;
-input int      D1Slow=7;
 input int      H4Fast=1;
 input int      H4Slow=6;
 input int      H1Fast=4;
@@ -19,7 +17,6 @@ input int      M30Slow=2;
 input int      M15Fast=1;
 input int      M15Slow=4;
 
-double previous_tenkan_D1=0;
 double previous_tenkan_H4=0;
 double previous_tenkan_H1=0;
 double previous_tenkan_M30=0;
@@ -31,7 +28,7 @@ string min_lot;
 int OnInit()
   {
    min_lot=DoubleToString(SymbolInfoDouble(Symbol(),SYMBOL_VOLUME_MIN));
-   for(int i=0;i<5;i++)
+   for(int i=0;i<4;i++)
         {
          int FastPeriod=0;
          int SlowPeriod=0;
@@ -39,26 +36,21 @@ int OnInit()
          switch(i)
            {
             case 0:
-              FastPeriod=D1Fast;
-              SlowPeriod=D1Slow;
-              IndicatorPeriod=PERIOD_D1;
-              break;
-            case 1:
               FastPeriod=H4Fast;
               SlowPeriod=H4Slow;
               IndicatorPeriod=PERIOD_H4;
               break;
-            case 2:
+            case 1:
               FastPeriod=H1Fast;
               SlowPeriod=H1Slow;
               IndicatorPeriod=PERIOD_H1;
               break;
-            case 3:
+            case 2:
               FastPeriod=M30Fast;
               SlowPeriod=M30Slow;
               IndicatorPeriod=PERIOD_M30;
               break;
-            case 4:
+            case 3:
               FastPeriod=M15Fast;
               SlowPeriod=M15Slow;
               IndicatorPeriod=PERIOD_M15;
@@ -76,18 +68,15 @@ int OnInit()
             switch(i)
            {
             case 0:
-              previous_tenkan_D1=TenkansanArray[0];
-              break;
-            case 1:
               previous_tenkan_H4=TenkansanArray[0];
               break;
-            case 2:
+            case 1:
               previous_tenkan_H1=TenkansanArray[0];
               break;
-            case 3:
+            case 2:
               previous_tenkan_M30=TenkansanArray[0];
               break;
-            case 4:
+            case 3:
               previous_tenkan_M15=TenkansanArray[0];
               break;
             default:
@@ -109,7 +98,7 @@ void OnDeinit(const int reason)
 //+------------------------------------------------------------------+
 void OnTick()
   {
-       for(int i=0;i<5;i++) //do for each period
+       for(int i=0;i<4;i++) //do for each period
         {
          int FastPeriod=0;
          int SlowPeriod=0;
@@ -119,30 +108,24 @@ void OnTick()
          switch(i)
            {
             case 0:
-              FastPeriod=D1Fast;
-              SlowPeriod=D1Slow;
-              IndicatorPeriod=PERIOD_D1;
-              previous_tenkan=previous_tenkan_D1;
-              break;
-            case 1:
               FastPeriod=H4Fast;
               SlowPeriod=H4Slow;
               IndicatorPeriod=PERIOD_H4;
               previous_tenkan=previous_tenkan_H4;
               break;
-            case 2:
+            case 1:
               FastPeriod=H1Fast;
               SlowPeriod=H1Slow;
               IndicatorPeriod=PERIOD_H1;
               previous_tenkan=previous_tenkan_H1;
               break;
-            case 3:
+            case 2:
               FastPeriod=M30Fast;
               SlowPeriod=M30Slow;
               IndicatorPeriod=PERIOD_M30;
               previous_tenkan=previous_tenkan_M30;
               break;
-            case 4:
+            case 3:
               FastPeriod=M15Fast;
               SlowPeriod=M15Slow;
               IndicatorPeriod=PERIOD_M15;
@@ -225,18 +208,15 @@ void OnTick()
             switch(i)
            {
             case 0:
-              previous_tenkan_D1=previous_tenkan;
-              break;
-            case 1:
               previous_tenkan_H4=previous_tenkan;
               break;
-            case 2:
+            case 1:
               previous_tenkan_H1=previous_tenkan;
               break;
-            case 3:
+            case 2:
               previous_tenkan_M30=previous_tenkan;
               break;
-            case 4:
+            case 3:
               previous_tenkan_M15=previous_tenkan;
               break;
             default:
@@ -284,7 +264,7 @@ void SendSignal(string action,ENUM_TIMEFRAMES IndicatorPeriod,int SlowPeriod){
    char post[],response[];
    string response_headers,strResponse;
    StringToCharArray(body,post,0,StringLen(body));
-   int result=WebRequest("POST","http://127.0.0.1/v1/signals/",headers,2000,post,response,response_headers);
+   int result=WebRequest("POST","http://3.83.48.249/v1/signals/",headers,2000,post,response,response_headers);
    
    if(result==-1){
       Print("Error ",GetLastError());
@@ -312,8 +292,6 @@ string getTimeframe(ENUM_TIMEFRAMES period){
         return "H1";
       case PERIOD_H4:
         return "H4";
-      case PERIOD_D1:
-        return "D1";
       default:
         return "H1";
      }
