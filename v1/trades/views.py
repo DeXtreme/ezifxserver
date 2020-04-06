@@ -45,7 +45,14 @@ class ClosedTradesPagination(BasePagination):
 class TradesViewset(GenericViewSet,CreateModelMixin,ListModelMixin,RetrieveModelMixin):
     serializer_class=TradeSerializer
     pagination_class=ClosedTradesPagination
-    permission_classes=[IsAuthenticated,MarketPermission]
+    permission_classes=()
+
+    def get_permissions(self):
+        if(self.action == "list"):
+            permission_classes=[IsAuthenticated]
+        else:
+            permission_classes=[IsAuthenticated,MarketPermission]
+        return [permission() for permission in permission_classes]
     
 
     def get_queryset(self):
@@ -64,9 +71,9 @@ class TradesViewset(GenericViewSet,CreateModelMixin,ListModelMixin,RetrieveModel
             trade=openTrade(user,signal,risk)
             return Response(TradeSerializer(trade).data)
         except Http404:
-            return Response({"details":"Signal has expired"},status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({"detail":"Signal has expired"},status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         except Exception as e:
-           return Response({"details":str(e) if str(e) else "Trade could not be opened.Please try again later"},status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+           return Response({"detail":str(e) if str(e) else "Trade could not be opened.Please try again later"},status=status.HTTP_500_INTERNAL_SERVER_ERROR)
             
 
        
@@ -79,4 +86,4 @@ class TradesViewset(GenericViewSet,CreateModelMixin,ListModelMixin,RetrieveModel
             trade=closeTrade(trade)
             return Response(TradeSerializer(trade).data,status=status.HTTP_200_OK)
         except:   
-            return Response({"details":"Trade could not be closed.Please try again later"},status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({"detail":"Trade could not be closed.Please try again later"},status=status.HTTP_500_INTERNAL_SERVER_ERROR)

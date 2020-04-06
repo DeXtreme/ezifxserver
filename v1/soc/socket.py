@@ -3,7 +3,7 @@ import json
 import requests
 from .models import SocInfo
 
-api_token="924a342978b1fffbc34df69a0f437b8b8459994e"
+api_token="f8a14411f06fa9f1f5af75d53ed45a711209c7dc"
 offers=[]
 account_id=None
 

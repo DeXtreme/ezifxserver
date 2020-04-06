@@ -3,6 +3,7 @@ import math
 from v1.soc.tasks import openTradeWorker,closeTradeWorker
 from v1.signals.requests import getMarketInfo
 from time import sleep
+from efxapi.common import round_half_up,round_half_down
 from v1.account.models import Account
 
 
@@ -22,14 +23,6 @@ def closeTrade(trade):
     except:
         raise Exception()
 
-
-def round_half_up(n, decimals=0):
-    multiplier = 10 ** decimals
-    return math.floor(n*multiplier + 0.5) / multiplier
-
-def round_half_down(n, decimals=0):
-    multiplier = 10 ** decimals
-    return math.ceil(n*multiplier - 0.5) / multiplier
 
 
 def openTrade(user,signal,risk):

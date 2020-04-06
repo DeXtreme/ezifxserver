@@ -109,9 +109,9 @@ class SignalsViewset(GenericViewSet,CreateModelMixin,ListModelMixin,RetrieveMode
         try:
             signal=get_object_or_404(self.get_queryset(),id=pk)
             info=getMarketInfo(signal)
-            signal_info={"id":info["id"],"min":info["min_risk"],"max":info["max_risk"],"fee":settings.FEE}
+            signal_info={"id":info["id"],"min":info["min_risk"],"max":info["max_risk"],"close_time":info["close_time"],"open_time":info["open_time"],"fee":settings.FEE}
             return Response(signal_info)
         except Http404:
-            return Response({"details":"Signal has expired"},status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({"detail":"Signal has expired"},status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         except Exception as e:
-           return Response({"details":str(e) if str(e) else "Trades cannot be placed at the moment.Please try again later"},status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+           return Response({"detail":str(e) if str(e) else "Trades cannot be placed at the moment.Please try again later"},status=status.HTTP_500_INTERNAL_SERVER_ERROR)

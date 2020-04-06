@@ -4,6 +4,7 @@ from django.db.models import Sum
 import requests
 import math
 from v1.soc.socket import get_candles,get_usableMargin
+from efxapi.common import round_half_up,round_half_down,get_market_times
 from django.conf import settings
 
 #get pair info as part of retrieve
@@ -72,20 +73,17 @@ def getMarketInfo(signal):
             if(max_lot<signal.min_lot):
                 raise Exception() #no free margin
         """
-        
+        close_time,open_time=get_market_times()
+
         return {"id":signal.id,
                 "min_risk":round_half_up(min_risk,2),
-                "max_risk":round_half_down(max_risk,2)}
+                "max_risk":round_half_down(max_risk,2),
+                "close_time":close_time.strftime("%a %H:%M UTC"),
+                "open_time":open_time.strftime("%a %H:%M UTC")}
     except Exception as e:
         print(e)
         raise Exception()
 
 
-def round_half_up(n, decimals=0):
-    multiplier = 10 ** decimals
-    return math.floor(n*multiplier + 0.5) / multiplier
 
-def round_half_down(n, decimals=0):
-    multiplier = 10 ** decimals
-    return math.ceil(n*multiplier - 0.5) / multiplier
 

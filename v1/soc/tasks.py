@@ -9,10 +9,12 @@ from django.db.models import Sum
 from django.conf import settings
 from time import sleep
 from datetime import datetime
+import pytz
 import math
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 from v1.soc.socket import api_token
+from efxapi.common import round_half_up,round_half_down,is_market_open
 import json
 
 
@@ -70,7 +72,7 @@ def openTradeWorker(self,pk):
             if(pending_trade.status=="PO"):
                 risk=pending_trade.risk  
                 atr=settings.ATR_MUL*signal.atr
-                #risk=(1.0-settings.FEE)*risk #take percent of risk amount as fee
+                #risk=(1.0-settings.FEE)*risk #take percent of risk amount as fee and use rest !!!!!
 
                 usable_margin=con.get_accounts().iloc[0]["usableMargin"]
                 print("Usable margin",usable_margin)
@@ -204,14 +206,6 @@ def openTradeWorker(self,pk):
         print(exc)
         raise self.retry(max_retries=5, exc=exc,countdown=1)
 
-def round_half_up(n, decimals=0):
-    multiplier = 10 ** decimals
-    return math.floor(n*multiplier + 0.5) / multiplier
-
-def round_half_down(n, decimals=0):
-    multiplier = 10 ** decimals
-    return math.ceil(n*multiplier - 0.5) / multiplier
-
 
 @shared_task
 def updateTasker():
@@ -220,21 +214,21 @@ def updateTasker():
     limit=10
     while True:
         try:
-            print("in updater",con.socket.sid)
-            time=datetime.utcnow()
+            print("In Updater",con.is_connected())
 
-            if((time.weekday==4 and time.hour>21) or (time.weekday==5) or (time.weekday==6 and time.hour<23) #friday 9pm to sunday 11pm
-            or (time.month==12 and time.date==24 and time.hour>21) or (time.month==12 and time.date==25) or (time.month==12 and time.date==25 and time.hour<23) #24/12 9pm to 25/12 11pm
-            or (time.month==12 and time.date==31 and time.hour>21) or (time.month==1 and time.date==1) or (time.month==1 and time.date==1 and time.hour<23)): #31/12 9pm to 01/01 11pm 
-                #sleep() for 30 min maybe more
-                pass
-            else:
-                if(offset<Trade.objects.filter(status="O").count()):
-                    updateTask.apply_async([offset,offset+limit],priority=5)
-                    offset+=limit
-                    sleep(0.01)
+            if(is_market_open):
+                if(not con.is_connected()):
+                    print("Reconnecting...")
+                    con.__init__(access_token=api_token,log_level='error')
                 else:
-                    offset=0
+                    if(offset<Trade.objects.filter(status="O").count()):
+                        updateTask.apply_async([offset,offset+limit],priority=5)
+                        offset+=limit
+                        sleep(0.01)
+                    else:
+                        offset=0
+            else:
+                sleep(300)
         except Exception as e:
             print(e)
         sleep(1)
@@ -383,7 +377,7 @@ def closeTradeWorker(self,pk):
 def start(sender=None, headers=None, body=None, **kwargs):
     global con
     con=efxfxcmpy(access_token=api_token,log_level='error')
-    if(con.is_connected):
+    if(con.is_connected()):
         print("FXCM connected")
         SocInfo.objects.update_or_create(pk=1,defaults={"offers":json.dumps(con.offers),"account_id":str(con.default_account)})
         updateTasker.apply_async(priority=0)
@@ -396,9 +390,6 @@ class efxfxcmpy(fxcmpy):
         super().__on_connect__()
         SocInfo.objects.update_or_create(pk=1,defaults={"socket_id":self.socket.sid})
 
-    def __on_disconnect__(self,msg=''):
-        super().__on_disconnect__(msg=msg)
-        self.__init__(access_token=api_token,log_level='error')
 
 
 
