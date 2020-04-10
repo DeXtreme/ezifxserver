@@ -72,7 +72,7 @@ def openTradeWorker(self,pk):
             if(pending_trade.status=="PO"):
                 risk=pending_trade.risk  
                 atr=settings.ATR_MUL*signal.atr
-                #risk=(1.0-settings.FEE)*risk #take percent of risk amount as fee and use rest !!!!!
+                risk=(1.0-settings.FEE)*risk #take percent of risk amount as fee and use rest !!!!!
 
                 usable_margin=con.get_accounts().iloc[0]["usableMargin"]
                 print("Usable margin",usable_margin)
@@ -216,19 +216,21 @@ def updateTasker():
         try:
             print("In Updater",con.is_connected())
 
-            if(is_market_open):
-                if(not con.is_connected()):
-                    print("Reconnecting...")
-                    con.__init__(access_token=api_token,log_level='error')
-                else:
-                    if(offset<Trade.objects.filter(status="O").count()):
-                        updateTask.apply_async([offset,offset+limit],priority=5)
-                        offset+=limit
-                        sleep(0.01)
-                    else:
-                        offset=0
+            if(not con.is_connected()):
+                print("Reconnecting...")
+                con.__init__(access_token=api_token,log_level='error')
             else:
-                sleep(300)
+                trade_count=Trade.objects.filter(status="O").count()
+                if(trade_count>0 and not is_market_open()):
+                    con.close_all()
+                    
+                if(trade_count>0 and offset<trade_count):
+                    updateTask.apply_async([offset,offset+limit],priority=5)
+                    offset+=limit
+                    sleep(0.01)
+                else:
+                    offset=0
+
         except Exception as e:
             print(e)
         sleep(1)

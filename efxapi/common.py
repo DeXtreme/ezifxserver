@@ -4,7 +4,7 @@ import math
 
 def is_market_open():
     time=datetime.now(pytz.timezone('US/Eastern'))
-
+    print(time)
     if ((time.weekday()==6 and time.hour>=18) or (time.weekday() in [0,1,2,3]) or (time.weekday()==4 and time.hour<16)): #weekdays
         if((time.month==12 and time.date==24 and time.hour>=18) or (time.month==12 and time.date==25) or (time.month==12 and time.date==26 and time.hour<16)): #christmas
             return False
