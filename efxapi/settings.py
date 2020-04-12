@@ -34,11 +34,14 @@ CHANNEL_LAYERS = {
 CELERY_BROKER_URL = 'amqp://guest:guest@127.0.0.1/'
 CELERY_RESULT_BACKEND = 'rpc://'
 
-CELERY_IGNORE_RESULT = True
+#CELERY_IGNORE_RESULT = True
+
+"""
 CELERY_BROKER_TRANSPORT_OPTIONS = {
     'priority_steps': list(range(10)),
     'queue_order_strategy': 'priority',
 }
+"""
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

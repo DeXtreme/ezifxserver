@@ -200,6 +200,8 @@ def openTradeWorker(self,pk):
                 account.balance-=(risk+max(round_half_down(risk*settings.FEE,decimals=2),0.01))
                 account.save()
 
+                return True
+
             else:
                 raise Exception("Could not place trade")
     except Exception as exc:
@@ -309,6 +311,7 @@ def updateTask(start,stop):
 
                 print("closed",trade.trade_id)
             else:
+                #check closed from api
                 #trade.status="E"
                 #trade.save()
                 pass
@@ -368,6 +371,8 @@ def closeTradeWorker(self,pk):
                 account=Account.objects.get(user=pending_trade.user)
                 account.balance=round_half_down(account.balance+profit+pending_trade.risk,decimals=2)
                 account.save()
+
+                return True
     except Exception as exc:
         print(exc)
         raise self.retry(max_retries=5, exc=exc,countdown=1)
