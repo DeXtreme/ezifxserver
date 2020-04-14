@@ -342,37 +342,37 @@ def closeTradeWorker(self,pk):
                 pending_trade.save()
 
             
-            if(pending_trade.trade_id in con.closed_pos):
-                trade=con.closed_pos[pending_trade.trade_id]
-                trade_id=trade.get_tradeId()
-                current_price=trade.get_close()
+            #if(pending_trade.trade_id in con.closed_pos):
+            trade=con.closed_pos[pending_trade.trade_id]
+            trade_id=trade.get_tradeId()
+            current_price=trade.get_close()
 
-                #if(quote!="USD"):
-                exchange=con.get_candles("USD"+"/"+quote,period=signal.timeframe.lower(),number=1).iloc[0]["askclose"] if quote!="USD" else 1
+            #if(quote!="USD"):
+            exchange=con.get_candles("USD"+"/"+quote,period=signal.timeframe.lower(),number=1).iloc[0]["askclose"] if quote!="USD" else 1
+            if(trade.get_isBuy()):
+                profit=(trade.get_amount()*1000)*(trade.get_close()-trade.get_open())/exchange
+            else:
+                profit=(trade.get_amount()*1000)*(trade.get_open()-trade.get_close())/exchange
+            
+            """
+            else:
                 if(trade.get_isBuy()):
-                    profit=(trade.get_amount()*1000)*(trade.get_close()-trade.get_open())/exchange
+                    profit=(trade.get_amount()*1000)*(trade.get_close()-trade.get_open())
                 else:
-                    profit=(trade.get_amount()*1000)*(trade.get_open()-trade.get_close())/exchange
-                
-                """
-                else:
-                    if(trade.get_isBuy()):
-                        profit=(trade.get_amount()*1000)*(trade.get_close()-trade.get_open())
-                    else:
-                        profit=(trade.get_amount()*1000)*(trade.get_open()-trade.get_close())
-                """
-     
-                pending_trade.current_price=current_price
-                pending_trade.previous_price=current_price
-                pending_trade.profit=round_half_down(profit,decimals=2)
-                pending_trade.status="C"
-                pending_trade.save()
+                    profit=(trade.get_amount()*1000)*(trade.get_open()-trade.get_close())
+            """
+    
+            pending_trade.current_price=current_price
+            pending_trade.previous_price=current_price
+            pending_trade.profit=round_half_down(profit,decimals=2)
+            pending_trade.status="C"
+            pending_trade.save()
 
-                account=Account.objects.get(user=pending_trade.user)
-                account.balance=round_half_down(account.balance+profit+pending_trade.risk,decimals=2)
-                account.save()
+            account=Account.objects.get(user=pending_trade.user)
+            account.balance=round_half_down(account.balance+profit+pending_trade.risk,decimals=2)
+            account.save()
 
-                return True
+            return True
     except Exception as exc:
         print(exc)
         raise self.retry(max_retries=5, exc=exc,countdown=1)
