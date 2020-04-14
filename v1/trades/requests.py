@@ -45,7 +45,8 @@ def openTrade(user,signal,risk):
             raise Exception("Trade could not be opened.Risk amount above maximum")
         else:
             pass
-
+        
+        pending=None
         pending=Trade.objects.create(user=user,signal=signal,risk=risk,status="PO")
         task=openTradeWorker.apply_async([pending.id],priority=0)   
         result=task.get()
@@ -60,7 +61,7 @@ def openTrade(user,signal,risk):
             raise Exception()
         """
         
- 
+
     except Exception as e:
         print(e)
         if(pending):
