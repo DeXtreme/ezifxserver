@@ -12,6 +12,7 @@ def closeTrade(trade):
         trade.status="PC"
         trade.save()
 
+        pending=None
         pending=Trade.objects.get(id=trade.id)
         task=closeTradeWorker.apply_async([trade.id],priority=0)
         result=task.get()
@@ -27,6 +28,8 @@ def closeTrade(trade):
         raise Exception()
         """
     except:
+        if(pending):
+            pending.status="O"
         raise Exception()
 
 

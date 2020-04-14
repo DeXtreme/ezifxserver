@@ -15,10 +15,9 @@ class TradesConsumer(JsonWebsocketConsumer): #try jsonwebsocket
                 self.channel_name
             )
             
+            self.accept()
             open_trades=Trade.objects.filter(user__username=self.scope["user"].username,status="O")
             serializer=TradeSerializer(open_trades,many=True)
-
-            self.accept()
             if(is_market_open()):
                 self.send_json({"status_code":200,"data":serializer.data})
             else:
