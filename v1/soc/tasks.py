@@ -210,6 +210,32 @@ def openTradeWorker(self,pk):
 
 
 @shared_task
+def uptimeTask():
+    global con
+    print("Started Uptime...",con.is_connected())
+    while True:
+        try:
+
+            if(not con.is_connected()):
+                print("Reconnecting...")
+                #con.socket.disconnect()
+                #con.__init__(access_token=api_token,log_level='error')
+                #sleep(10)
+            else:
+                if(not is_market_open()):
+                    trade_count=Trade.objects.filter(status="O").count()
+                    if (trade_count>0):
+                        con.close_all()
+
+                    sleep(60) #make it an hour
+        except Exception as e:
+            print(e)
+        sleep(10)
+
+
+"""    
+
+ @shared_task
 def updateTasker():
     global con
     offset=0
@@ -236,7 +262,7 @@ def updateTasker():
         except Exception as e:
             print(e)
         sleep(1)
-        
+
 @shared_task
 def updateTask(start,stop):
     try:
@@ -260,16 +286,7 @@ def updateTask(start,stop):
                 else:
                     profit=(position.get_amount()*1000)*(position.get_open()-position.get_close())/exchange
                     stoploss_profit=(position.get_amount()*1000)*(position.get_open()-position.get_stop())/exchange
-
-                """
-                else:
-                    if(position.get_isBuy()==True):
-                        profit=(position.get_amount()*1000)*(position.get_close()-position.get_open())
-                        stoploss_profit=(position.get_amount()*1000)*(position.get_stop()-position.get_open())
-                    else:
-                        profit=(position.get_amount()*1000)*(position.get_open()-position.get_close())
-                        stoploss_profit=(position.get_amount()*1000)*(position.get_open()-position.get_stop())
-                """        
+       
                                 
                 trade.stoploss=stoploss
                 trade.stoploss_price=stoploss_price
@@ -291,15 +308,7 @@ def updateTask(start,stop):
                 if(position.get_isBuy()==True):
                     profit=(position.get_amount()*1000)*(position.get_close()-position.get_open())/exchange
                 else:
-                    profit=(position.get_amount()*1000)*(position.get_open()-position.get_close())/exchange
-                    
-                """
-                else:
-                    if(position.get_isBuy()==True):
-                        profit=(position.get_amount()*1000)*(position.get_close()-position.get_open())
-                    else:
-                        profit=(position.get_amount()*1000)*(position.get_open()-position.get_close())
-                """                 
+                    profit=(position.get_amount()*1000)*(position.get_open()-position.get_close())/exchange              
 
                 trade.profit=round_half_down(profit,decimals=2)
                 trade.status="C"
@@ -320,7 +329,92 @@ def updateTask(start,stop):
         async_to_sync(channel_layer.group_send)("trades",{"type":"update_trades","message":trade.user.username})
     except Exception as e:
         print(e)
+"""
 
+@shared_task
+def updateOpenTask(trade_id):
+    try:
+        print("updating open",trade_id)
+        #for trade in Trade.objects.filter(status="O",trade_id=tradeid):
+        trade=Trade.objects.get(trade_id=trade_id,status="O") #get current state
+        if(trade.trade_id in con.open_pos):
+            position=con.open_pos[trade.trade_id]
+            signal=trade.signal
+            timeframe="%s%s" %("m" if signal.timeframe[0].lower()=="m" else "H",signal.timeframe[1:])
+            quote=position.get_currency().split("/")[1]     
+            stoploss=abs(position.get_close()-position.get_stop())
+            stoploss_price=position.get_stop()
+            current_price=position.get_close()
+
+            #if(quote!="USD"):
+            exchange=con.get_candles("USD"+"/"+quote,period=timeframe,number=1)["askclose"].iloc[0] if quote!="USD" else 1
+            if(position.get_isBuy()==True):
+                profit=(position.get_amount()*1000)*(position.get_close()-position.get_open())/exchange
+                stoploss_profit=(position.get_amount()*1000)*(position.get_stop()-position.get_open())/exchange
+            else:
+                profit=(position.get_amount()*1000)*(position.get_open()-position.get_close())/exchange
+                stoploss_profit=(position.get_amount()*1000)*(position.get_open()-position.get_stop())/exchange
+    
+                            
+            trade.stoploss=stoploss
+            trade.stoploss_price=stoploss_price
+            trade.current_price=current_price
+            trade.profit=round_half_down(profit,decimals=2)
+            trade.stoploss_profit=round_half_down(stoploss_profit,decimals=2)
+            trade.save()
+
+            print("updated",trade.trade_id)
+
+        else:
+            #check closed from api
+            #trade.status="E"
+            #trade.save()
+            pass
+
+        channel_layer=get_channel_layer()
+        async_to_sync(channel_layer.group_send)("trades",{"type":"update_trades","message":trade.user.username})
+    except Exception as e:
+        print(e)
+
+
+@shared_task
+def updateCloseTask(trade_id):
+    try:
+        print("updating close",trade_id)
+        #for trade in Trade.objects.filter(status="O",trade_id=tradeid):
+        trade=Trade.objects.get(trade_id=trade_id,status="O") #get current state
+        if (trade and trade.trade_id in con.closed_pos):
+            position=con.closed_pos[trade.trade_id]
+                
+            quote=position.get_currency().split("/")[1]     
+            current_price=position.get_close()
+
+            #if(quote!="USD"):
+            exchange=con.get_candles("USD"+"/"+quote,period=timeframe,number=1)["askclose"].iloc[0] if (quote!="USD") else 1
+            if(position.get_isBuy()==True):
+                profit=(position.get_amount()*1000)*(position.get_close()-position.get_open())/exchange
+            else:
+                profit=(position.get_amount()*1000)*(position.get_open()-position.get_close())/exchange              
+
+            trade.profit=round_half_down(profit,decimals=2)
+            trade.status="C"
+            trade.save()
+
+            account=Account.objects.get(user=trade.user)
+            account.balance=round_half_down(account.balance+profit+trade.risk,decimals=2)
+            account.save()
+
+            print("closed",trade.trade_id)
+        else:
+            #check closed from api
+            #trade.status="E"
+            #trade.save()
+            pass
+
+        channel_layer=get_channel_layer()
+        async_to_sync(channel_layer.group_send)("trades",{"type":"update_trades","message":trade.user.username})
+    except Exception as e:
+        print(e)
 
 @shared_task(bind=True)
 def closeTradeWorker(self,pk):
@@ -387,7 +481,7 @@ def start(sender=None, headers=None, body=None, **kwargs):
     if(con.is_connected()):
         print("FXCM connected")
         SocInfo.objects.update_or_create(pk=1,defaults={"offers":json.dumps(con.offers),"account_id":str(con.default_account)})
-        updateTasker.apply_async(priority=0)
+        uptimeTask.apply_async(priority=0)
     else:
         print("FXCM disconnected")
 
@@ -396,6 +490,41 @@ class efxfxcmpy(fxcmpy):
     def __on_connect__(self, msg=''):
         super().__on_connect__()
         SocInfo.objects.update_or_create(pk=1,defaults={"socket_id":self.socket.sid})
+
+
+    def __collect_positions__(self):
+        super().__collect_positions__()
+        for trade_id in self.open_pos.keys():
+            updateOpenTask.apply_async([trade_id],priority=5)
+        for trade_id in self.closed_pos.keys():
+            updateCloseTask.apply_async([trade_id],priority=5)
+
+    def __on_open_pos_update__(self,msg):
+        super().__on_open_pos_update__(msg)
+        try:
+            data = json.loads(msg)
+
+            print(data)
+            if 'tradeId' in data and data['tradeId'] != '' and "action" not in data:
+                trade_id = int(data['tradeId'])
+                updateOpenTask.apply_async([trade_id],priority=5)
+        except Exception as e:
+            print('Error in __on_open_pos_update',e)
+
+
+    def __on_closed_pos_update__(self,msg):
+        super().__on_closed_pos_update__(msg)
+        try:
+            data = json.loads(msg)
+
+            if 'tradeId' in data and data['tradeId'] != '' and "action" in data and data["action"] == 'I':
+                trade_id = int(data['tradeId'])
+                #check if O or PC
+                updateCloseTask.apply_async([trade_id],priority=5)
+        except Exception as e:
+            print('Error in __on_closed_pos_update',e)
+
+        
 
 
 

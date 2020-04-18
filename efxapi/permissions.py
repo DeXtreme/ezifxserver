@@ -13,7 +13,5 @@ class MarketClosedException(APIException):
 class MarketPermission(BasePermission):
     def has_permission(self,request,view):
         if(not is_market_open()):
-            print("closed")
             raise MarketClosedException()
-        print("Open")
         return True
