@@ -19,6 +19,7 @@ import json
 
 
 con=None #fxcm connection
+channel_layer=None
 
 """
 @shared_task
@@ -371,7 +372,7 @@ def updateOpenTask(trade_id):
             #trade.save()
             pass
 
-        channel_layer=get_channel_layer()
+        
         async_to_sync(channel_layer.group_send)("trades",{"type":"update_trades","message":trade.user.username})
     except Exception as e:
         print(e)
@@ -477,9 +478,11 @@ def closeTradeWorker(self,pk):
 @worker_ready.connect
 def start(sender=None, headers=None, body=None, **kwargs):
     global con
+    global channel_layer
     con=efxfxcmpy(access_token=api_token,log_level='error')
     if(con.is_connected()):
         print("FXCM connected")
+        channel_layer=get_channel_layer()
         SocInfo.objects.update_or_create(pk=1,defaults={"offers":json.dumps(con.offers),"account_id":str(con.default_account)})
         uptimeTask.apply_async(priority=0)
     else:
