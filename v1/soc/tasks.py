@@ -374,6 +374,7 @@ def updateOpenTask(trade_id):
 
         
         async_to_sync(channel_layer.group_send)("trades",{"type":"update_trades","message":trade.user.username})
+        sleep(5)
     except Exception as e:
         print(e)
 
@@ -412,8 +413,8 @@ def updateCloseTask(trade_id):
             #trade.save()
             pass
 
-        channel_layer=get_channel_layer()
         async_to_sync(channel_layer.group_send)("trades",{"type":"update_trades","message":trade.user.username})
+        sleep(5)
     except Exception as e:
         print(e)
 
