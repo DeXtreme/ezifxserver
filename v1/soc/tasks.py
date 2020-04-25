@@ -373,8 +373,8 @@ def updateOpenTask(trade_id):
             pass
 
         
-        async_to_sync(channel_layer.group_send)("trades",{"type":"update_trades","message":trade.user.username})
-        sleep(5)
+        async_to_sync(channel_layer.group_send,True)("trades",{"type":"update_trades","message":trade.user.username})
+
     except Exception as e:
         print(e)
 
@@ -413,8 +413,7 @@ def updateCloseTask(trade_id):
             #trade.save()
             pass
 
-        async_to_sync(channel_layer.group_send)("trades",{"type":"update_trades","message":trade.user.username})
-        sleep(5)
+        async_to_sync(channel_layer.group_send,True)("trades",{"type":"update_trades","message":trade.user.username})
     except Exception as e:
         print(e)
 
@@ -512,7 +511,6 @@ class efxfxcmpy(fxcmpy):
             if 'tradeId' in data and data['tradeId'] != '' and "action" not in data:
                 trade_id = int(data['tradeId'])
                 updateOpenTask.apply_async([trade_id],priority=5)
-            sleep(0.01)
         except Exception as e:
             print('Error in __on_open_pos_update',e)
 
@@ -526,7 +524,6 @@ class efxfxcmpy(fxcmpy):
                 trade_id = int(data['tradeId'])
                 #check if O or PC
                 updateCloseTask.apply_async([trade_id],priority=5)
-            sleep(0.01)
         except Exception as e:
             print('Error in __on_closed_pos_update',e)
 
