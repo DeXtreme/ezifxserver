@@ -371,10 +371,11 @@ def updateOpenTask(trade_id):
             #trade.status="E"
             #trade.save()
             pass
-
         
-        async_to_sync(channel_layer.group_send,True)("trades",{"type":"update_trades","message":trade.user.username})
 
+        async_to_sync(channel_layer.group_send,True)("trades",{"type":"update_trades","message":trade.user.username})
+        print("update sent")
+        return
     except Exception as e:
         print(e)
 
