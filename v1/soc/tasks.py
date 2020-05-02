@@ -21,39 +21,6 @@ import json
 con=None #fxcm connection
 channel_layer=None
 
-"""
-@shared_task
-def worker():
-    while True:
-        trades=Trade.objects.filter(status="O")
-        print("In trade")
-        for trade in trades:
-            time=datetime.utcnow()
-            if((time.weekday==6 and time.hour<23) or (time.weekday==5) or (time.weekday==4 and time.hour>21)):
-                print("Away for the weekend")
-                break
-            else:
-                tradeTask.delay(trade.trade_id)
-        sleep(5)
-
-@shared_task
-def updateTasker():
-    global con
-    offset=0
-    limit=10
-    while True:
-        print("in updater",con.socket.sid)
-        if(offset<Trade.objects.filter(status="O").count()):
-            updateTask.apply_async((offset,offset+limit),priority=5)
-            offset+=limit
-            #sleep(0.001)
-        else:
-            offset=0
-            break
-    updateTasker.apply_async(priority=9)
-
-
-"""
 
 @shared_task(bind=True)
 def openTradeWorker(self,pk):
@@ -96,12 +63,7 @@ def openTradeWorker(self,pk):
                 spread=abs(ask-bid)*10000 if quote!="JPY" else abs(ask-bid)*100
                 print("spread",spread)
 
-                """if(quote=="JPY"):
-                    spread=abs(ask-bid)*100 #
-                else:
-                    spread=abs(ask-bid)*10000
-                """
-
+        
                 print("exchange",exchange)
                 lot=risk/((per_pip/exchange) * atr)
                 lot= round_half_down(round_half_down(lot/signal.min_lot,decimals=5)*signal.min_lot,decimals=2)
@@ -115,27 +77,6 @@ def openTradeWorker(self,pk):
                 if((lot*100000*ask/(leverage*exchange))>usable_margin):
                     raise Exception("Free margin insufficient")
 
-                """
-                else:
-                    candle=con.get_candles(base+"/"+quote,period=timeframe,number=1).iloc[0]
-                    ask=candle["askclose"]
-                    bid=candle["bidclose"]
-
-                    spread=abs(ask-bid)*10000
-                    print("spread",spread)
-
-                    lot=risk/(10 * atr)
-                    lot= round_half_down(round_half_down(lot/signal.min_lot,decimals=5)*signal.min_lot,decimals=2)
-                    print("lot",lot)
-                    
-                    atr=risk/((10*lot))-spread #
-
-                    if((lot*100000*ask/leverage)>usable_margin):
-                        raise Exception("Not enough free margin")
-
-                    if(lot<signal.min_lot):
-                        raise Exception("Risk too small")
-                """
                         
                 trade=con.open_trade(base+"/"+quote,(signal.action=="BY"),lot*100,"GTC","AtMarket",is_in_pips=True,stop=(-1*int(atr)),trailing_step=1)
                 print(trade)
@@ -145,8 +86,6 @@ def openTradeWorker(self,pk):
                 pending_trade.save()
 
             else:
-                #if(quote!="USD"):
-                    #exchange=con.get_candles("USD"+"/"+quote,period=timeframe,number=1).iloc[0]["askclose"]
                 exchange=con.get_candles("USD"+"/"+quote,period=timeframe,number=1).iloc[0]["askclose"] if quote!="USD" else 1
                 trade=con.open_pos[pending_trade.trade_id]
 
@@ -158,24 +97,6 @@ def openTradeWorker(self,pk):
                 stoploss_price=trade.get_stop()
                 current_price=trade.get_close()
 
-                """
-                if(quote!="USD"):
-                    risk=(trade.get_amount()*1000)*abs(trade.get_open()-trade.get_stop())/exchange
-                    if(signal.action=="BY"):
-                        profit=(trade.get_amount()*1000)*(trade.get_close()-trade.get_open())/exchange
-                        stoploss_profit=(trade.get_amount()*1000)*(trade.get_stop()-trade.get_open())/exchange
-                    else:
-                        profit=(trade.get_amount()*1000)*(trade.get_open()-trade.get_close())/exchange
-                        stoploss_profit=(trade.get_amount()*1000)*(trade.get_open()-trade.get_stop())/exchange
-                else:
-                    risk=(trade.get_amount()*1000)*abs(trade.get_open()-trade.get_stop())
-                    if(signal.action=="BY"):
-                        profit=(trade.get_amount()*1000)*(trade.get_close()-trade.get_open())
-                        stoploss_profit=(trade.get_amount()*1000)*(trade.get_stop()-trade.get_open())
-                    else:
-                        profit=(trade.get_amount()*1000)*(trade.get_open()-trade.get_close())
-                        stoploss_profit=(trade.get_amount()*1000)*(trade.get_open()-trade.get_stop())
-                """
 
                 risk=(trade.get_amount()*1000)*abs(trade.get_open()-trade.get_stop())/exchange #trade amount is in Ks of units not lots
                 if(signal.action=="BY"):
@@ -216,7 +137,6 @@ def uptimeTask():
     print("Started Uptime...",con.is_connected())
     while True:
         try:
-
             if(not con.is_connected()):
                 print("Reconnecting...")
                 #con.socket.disconnect()
@@ -227,11 +147,12 @@ def uptimeTask():
                     trade_count=Trade.objects.filter(status="O").count()
                     if (trade_count>0):
                         con.close_all()
-
                     sleep(60) #make it an hour
+                else:
+                    async_to_sync(channel_layer.group_send)("trades",{"type":"update_trades"})
         except Exception as e:
             print(e)
-        sleep(10)
+        sleep(1)
 
 
 """    
@@ -366,16 +287,10 @@ def updateOpenTask(trade_id):
 
             print("updated",trade.trade_id)
 
-        else:
-            #check closed from api
-            #trade.status="E"
-            #trade.save()
-            pass
         
 
-        async_to_sync(channel_layer.group_send,True)("trades",{"type":"update_trades","message":trade.user.username})
-        print("update sent")
-        return
+        async_to_sync(channel_layer.group_send)("trades",{"type":"update_trades","message":trade.user.username})
+        
     except Exception as e:
         print(e)
 
@@ -408,13 +323,9 @@ def updateCloseTask(trade_id):
             account.save()
 
             print("closed",trade.trade_id)
-        else:
-            #check closed from api
-            #trade.status="E"
-            #trade.save()
-            pass
+        
 
-        async_to_sync(channel_layer.group_send,True)("trades",{"type":"update_trades","message":trade.user.username})
+        async_to_sync(channel_layer.group_send)("trades",{"type":"update_trades","message":trade.user.username})
     except Exception as e:
         print(e)
 
@@ -450,13 +361,6 @@ def closeTradeWorker(self,pk):
             else:
                 profit=(trade.get_amount()*1000)*(trade.get_open()-trade.get_close())/exchange
             
-            """
-            else:
-                if(trade.get_isBuy()):
-                    profit=(trade.get_amount()*1000)*(trade.get_close()-trade.get_open())
-                else:
-                    profit=(trade.get_amount()*1000)*(trade.get_open()-trade.get_close())
-            """
     
             pending_trade.current_price=current_price
             pending_trade.previous_price=current_price
@@ -508,7 +412,7 @@ class efxfxcmpy(fxcmpy):
         try:
             data = json.loads(msg)
 
-            print(data)
+            #print(data)
             if 'tradeId' in data and data['tradeId'] != '' and "action" not in data:
                 trade_id = int(data['tradeId'])
                 updateOpenTask.apply_async([trade_id],priority=5)

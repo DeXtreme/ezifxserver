@@ -36,11 +36,11 @@ class TradesConsumer(JsonWebsocketConsumer): #try jsonwebsocket
 
 
     def update_trades(self,event):
-        if(event["message"]==self.scope["user"].username):
-            open_trades=Trade.objects.filter(user__username=self.scope["user"].username,status="O")
-            serializer=TradeSerializer(open_trades,many=True)
-            if(is_market_open()):
-                self.send_json({"status_code":200,"data":serializer.data})
-            else:
-                self.send_json({"status_code":451,"data":serializer.data,"detail":"%s" %(get_market_times()[1].strftime("%a %H:%M"))})
+        #if(event["message"]==self.scope["user"].username):
+        open_trades=Trade.objects.filter(user__username=self.scope["user"].username,status="O")
+        serializer=TradeSerializer(open_trades,many=True)
+        if(is_market_open()):
+            self.send_json({"status_code":200,"data":serializer.data})
+        else:
+            self.send_json({"status_code":451,"data":serializer.data,"detail":"%s" %(get_market_times()[1].strftime("%a %H:%M"))})
 

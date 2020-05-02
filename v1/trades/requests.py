@@ -14,22 +14,17 @@ def closeTrade(trade):
 
         pending=None
         pending=Trade.objects.get(id=trade.id)
-        task=closeTradeWorker.apply_async([trade.id],priority=0)
+        task=closeTradeWorker.apply_async([trade.id],priority=0,expires=15)
         result=task.get()
-
-        return Trade.objects.get(id=pending.id)
-
-        """
-        while count<10:
-            if(pending.status=="C"):
-                return pending
-            count+=1
-            sleep(1)
-        raise Exception()
-        """
+        if(result==True):
+            return Trade.objects.get(id=pending.id)
+        else:
+            raise Exception()
+        
     except:
         if(pending):
             pending.status="O"
+            pending.save()
         raise Exception()
 
 
@@ -51,23 +46,15 @@ def openTrade(user,signal,risk):
         
         pending=None
         pending=Trade.objects.create(user=user,signal=signal,risk=risk,status="PO")
-        task=openTradeWorker.apply_async([pending.id],priority=0)   
+        task=openTradeWorker.apply_async([pending.id],priority=0,expires=15)   
         result=task.get()
+        if(result!=True):
+            raise Exception()
 
         return Trade.objects.get(id=pending.id)
-
-        """while count<10:
-            if(pending.status=="O"):
-                return pending
-            count+=1
-            sleep(1)
-            raise Exception()
-        """
-        
 
     except Exception as e:
         print(e)
         if(pending):
-            pending.status='E'
-            pending.save()
+            pending.delete()
         raise Exception()
