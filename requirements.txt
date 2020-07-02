@@ -27,7 +27,7 @@ coreapi-cli==1.0.9
 coreschema==0.0.4
 cryptography==2.8
 daphne==2.4.1
-Django==2.2.6
+Django==2.2.13
 django-background-tasks==1.2.5
 django-compat==1.0.15
 djangorestframework==3.10.3
